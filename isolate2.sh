@@ -61,7 +61,8 @@ elif [ "$NI_PHASE" = 2 ] ; then
 
     # If chroot method
     if [ $METHOD = "chroot" ] ; then
-	chroot "$NI_BASEDIR" "/isolate.sh" "$@"
+	cd "$NI_BASEDIR"
+	chroot "." "/isolate.sh" "$@"
     # Using pivot_root.  One comment I saw said this was more secure,
     # but I haven't verified this working yet.
     else
