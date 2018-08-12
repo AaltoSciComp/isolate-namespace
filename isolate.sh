@@ -19,7 +19,7 @@ export NI_OLDID=${NI_OLDID:-`id -u`:0}
 if [ -z "$NI_PHASE" ] ; then
     MNTDIRS=${MNTDIRS:-.}
     # Things which should almost always be mounted
-    MNTDIRS_BASE=${MNTDIRS_BASE:-"/bin /lib /etc /usr /lib64 /proc"}
+    MNTDIRS_BASE=${MNTDIRS_BASE:-"ro:/bin ro:/lib ro:/etc ro:/usr ro:/lib64 /proc"}
     export MNTDIRS="$MNTDIRS_BASE $MNTDIRS"
     # Make our tmpdir
     export NI_BASEDIR=`mktemp -d isolate.XXXXXXXX --tmpdir`
@@ -42,16 +42,28 @@ elif [ "$NI_PHASE" = 2 ] ; then
     debug whoami
     # Mount a tmpfs to be our new root.
     mount -t tmpfs -o size=10k tmpfs "$NI_BASEDIR"
-    # Mount each dir in the basedir
+    # First pass... create all directories (if mounted read-only this
+    # will be a problem later)
     for dir in $MNTDIRS; do
+	# remove a "ro:" prefix.
+	dir="${dir#ro:}"
 	dir=`realpath "$dir"`
 	mkdir -p "$NI_BASEDIR/$dir"
-	mount --bind "$dir" "$NI_BASEDIR/$dir"
     done
     # Copy the isolate.sh script into the new base.
     #mount --bind "$0" "$NI_BASEDIR/isolate.sh"
     cp -p "$0" "$NI_BASEDIR/isolate.sh"
     mkdir -p "$NI_BASEDIR/tmp/"
+
+    # Mount each dir in the basedir
+    for dir in $MNTDIRS; do
+	# If "ro:" prefix, bind-mount read only
+	[[ "$dir" = ro:* ]] && readonly="--read-only" || readonly=""
+	# remove a "ro:" prefix.
+	dir="${dir#ro:}"
+	dir=`realpath "$dir"`
+	mount --bind $readonly "$dir" "$NI_BASEDIR/$dir"
+    done
 
     debug whoami
     debug ls -l "$NI_BASEDIR"
