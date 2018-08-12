@@ -4,7 +4,7 @@ VERBOSE=${VERBOSE:-}
 test -n "$VERBOSE" && set -x
 set -e
 
-METHOD=chroot
+export METHOD=${METHOD:-chroot}
 
 # If VERBOSE is set, run the command
 debug () {
@@ -22,7 +22,11 @@ if [ -z "$NI_PHASE" ] ; then
     MNTDIRS_BASE=${MNTDIRS_BASE:-"ro:/bin ro:/lib ro:/etc ro:/usr ro:/lib64 /proc"}
     export MNTDIRS="$MNTDIRS_BASE $MNTDIRS"
     # Make our tmpdir
-    export NI_BASEDIR=`mktemp -d isolate.XXXXXXXX --tmpdir`
+    if [ -z "$NI_BASEDIR" ] ; then
+	export NI_BASEDIR=`mktemp -d isolate.XXXXXXXX --tmpdir`
+	# -d means 'remote empty dir only'
+	trap 'rm -d "$NI_BASEDIR"' EXIT KILL INT TERM
+    fi
 
     # Do the unshare.  Re-run this same script in phase 2.
     export NI_PHASE=2
@@ -30,11 +34,7 @@ if [ -z "$NI_PHASE" ] ; then
 	    --user --pid --net --uts --ipc --mount \
 	     --fork bash "$0" "$@"
 
-    # Clean up: change to "trap" later after ensuring that there won't
-    # be files left here and no chance of deleting stuff on mail
-    # filesystem.
-    # -d means 'remote empty dir only'
-    trap 'rm -d "$NI_BASEDIR"' EXIT KILL INT TERM
+    # Clean up via the "trap" above.
 
 # Phase 2: Mount stuff and chroot into the tmpdir
 elif [ "$NI_PHASE" = 2 ] ; then
@@ -78,10 +78,11 @@ elif [ "$NI_PHASE" = 2 ] ; then
     # Using pivot_root.  One comment I saw said this was more secure,
     # but I haven't verified this working yet.
     else
-	true #...
+	true #... something fancy using pivot_root?
     fi
 
-# Do setup in the chroot.  change to our former pwd and run our command.
+# Phase 3.  Do setup in the chroot, such as change to our former pwd
+# and run our command.
 elif [  "$NI_PHASE" = 3 ] ; then
     echo "BEGIN phase 3"
     cd "$NI_OLDPWD"
@@ -91,6 +92,6 @@ elif [  "$NI_PHASE" = 3 ] ; then
     if [ "$#" -gt 0 ] ; then
 	eval "$@"
     else
-	exec bash
+	exec "$SHELL"  # TODO: bash script so will always be bash...
     fi
 fi
