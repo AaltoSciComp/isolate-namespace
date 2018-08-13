@@ -46,7 +46,7 @@ elif [ "$NI_PHASE" = 2 ] ; then
     # will be a problem later)
     for dir in $MNTDIRS; do
 	# remove a "ro:" prefix.
-	dir="${dir#ro:}"
+	dir="${dir#*:}"
 	dir=`realpath "$dir"`
 	mkdir -p "$NI_BASEDIR/$dir"
     done
@@ -58,11 +58,13 @@ elif [ "$NI_PHASE" = 2 ] ; then
     # Mount each dir in the basedir
     for dir in $MNTDIRS; do
 	# If "ro:" prefix, bind-mount read only
-	[[ "$dir" = ro:* ]] && readonly="--read-only" || readonly=""
+	# This is probably a bashism
+	[[ "$dir" = *ro*:* ]] && readonly="--read-only" || readonly=""
+	[[ "$dir" = *rbind*:* ]] && bindtype="--rbind" || bindtype="--bind"
 	# remove a "ro:" prefix.
-	dir="${dir#ro:}"
+	dir="${dir#*:}"
 	dir=`realpath "$dir"`
-	mount --bind $readonly "$dir" "$NI_BASEDIR/$dir"
+	mount $bindtype $readonly "$dir" "$NI_BASEDIR/$dir"
     done
 
     debug whoami
