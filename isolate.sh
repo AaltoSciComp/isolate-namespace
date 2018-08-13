@@ -87,10 +87,19 @@ elif [ "$NI_PHASE" = 2 ] ; then
     # First pass... create all directories (if mounted read-only this
     # will be a problem later)
     for dir in $NI_MNTDIRS_ALL; do
-	# remove a "ro:" prefix.
-	dir="${dir#*:}"
-	dir=`realpath "$dir"`
-	mkdir -p "$NI_BASEDIR/$dir"
+        # remove a "ro:" prefix.
+        dir="${dir#*:}"
+        if [[ "$dir" != /* ]] ; then
+            dir=`realpath "$dir"`
+        fi
+        # If it's a file, prepare to bind mount the file
+        if [ -e "$dir" -a ! -d "$dir" ] ; then
+            mkdir -p "$NI_BASEDIR`dirname "$dir"`"
+            touch "$NI_BASEDIR/$dir"
+            continue
+        fi
+        # directory - make the dir
+        mkdir -p "$NI_BASEDIR/$dir"
     done
     # Copy the isolate.sh script into the new base.
     #mount --bind "$0" "$NI_BASEDIR/isolate.sh"
@@ -99,14 +108,17 @@ elif [ "$NI_PHASE" = 2 ] ; then
 
     # Mount each dir in the basedir
     for dir in $NI_MNTDIRS_ALL; do
-	# If "ro:" prefix, bind-mount read only
-	# This is probably a bashism
-	[[ "$dir" = *ro*:* ]] && readonly="--read-only" || readonly=""
-	[[ "$dir" = *rbind*:* ]] && bindtype="--rbind" || bindtype="--bind"
-	# remove a "ro:" prefix.
-	dir="${dir#*:}"
-	dir=`realpath "$dir"`
-	mount $bindtype $readonly "$dir" "$NI_BASEDIR/$dir"
+        # If "ro:" prefix, bind-mount read only
+        # This is probably a bashism
+        [[ "$dir" = *ro*:* ]] && readonly="--read-only" || readonly=""
+        [[ "$dir" = *rbind*:* ]] && bindtype="--rbind" || bindtype="--bind"
+        # remove a "ro:" prefix.
+        dir="${dir#*:}"
+        # If does not begin with "/", then
+        if [[ "$dir" != /* ]] ; then
+            dir=`realpath "$dir"`
+        fi
+        mount $bindtype $readonly "$dir" "$NI_BASEDIR/$dir"
     done
 
     debug whoami
