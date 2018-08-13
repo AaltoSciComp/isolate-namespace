@@ -4,67 +4,77 @@ VERBOSE=${VERBOSE:-}
 test -n "$VERBOSE" && set -x
 set -e
 
-
-NI_NET_UNSHARE="--net" # default
-
-while true ; do
-    case "$1" in
-	-m)
-	    MNTDIRS="$2"
-	    shift 2
-	    ;;
-	-v)
-	    export VERBOSE=1
-	    shift
-	    ;;
-	-b)
-	    export NI_BASEDIR="$2"
-	    shift 2
-	    ;;
-	--no-net)
-	    export NI_NET_UNSHARE=""
-	    shift 1
-	    ;;
-	--|*)
-	    break
-	    ;;
-    esac
-done
-
-
-export METHOD=${METHOD:-chroot}
-# Things which should almost always be mounted
-MNTDIRS_DEFAULT="ro:/bin ro:/lib ro:/etc ro:/usr ro:/lib64 /proc rbind:/dev"
-
-export MNTDIRS=${MNTDIRS:-.}
-export MNTDIRS_BASE=${MNTDIRS_BASE:-$MNTDIRS_DEFAULT}
-export NI_MNTDIRS_ALL="$MNTDIRS_BASE $MNTDIRS"
-
-
-
 # If VERBOSE is set, run the command
 debug () {
     test -n "$VERBOSE" && eval "$@"
     return 0
 }
 
-export NI_OLDID=${NI_OLDID:-`id -u`:`id -g`}
+
+debug echo original args: phase=$NI_PHASE "$@"
+
+export METHOD=${METHOD:-chroot}
+# Things which should almost always be mounted
+MNTDIRS_DEFAULT="ro:/bin ro:/usr ro:/lib ro:/lib64 /proc ro:/etc rbind:/dev"
+
 
 # Phase 1: basic setup of the new namespace.
 # Create the base directory.
 if [ -z "$NI_PHASE" ] ; then
+
+    # Parse arguments
+    NI_NET_UNSHARE="--net" # default
+
+    while true ; do
+        debug echo ARG: "$1"
+        case "$1" in
+        -m|--mnt)
+            MNTDIRS="$2"
+            shift 2
+            ;;
+        -v)
+            export VERBOSE=1
+            shift
+            ;;
+        -b)
+            export NI_BASEDIR="$2"
+            shift 2
+            ;;
+        --no-net)
+            export NI_NET_UNSHARE=""
+            shift 1
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            break
+            ;;
+        esac
+    done
+
+    # Arrange default arguments
+    export MNTDIRS=${MNTDIRS:-.}
+    export NI_MNTDIRS_ALL="$MNTDIRS_DEFAULT $MNTDIRS"
+    # Original uid/gid for changing back to user - not implemented yet.
+    export NI_OLDID=${NI_OLDID:-`id -u`:`id -g`}
+
+
+
+
     # Make our tmpdir
     if [ -z "$NI_BASEDIR" ] ; then
-	export NI_BASEDIR=`mktemp -d isolate.XXXXXXXX --tmpdir`
-	# -d means 'remote empty dir only'
-	trap 'rm -d "$NI_BASEDIR"' EXIT KILL INT TERM
+        export NI_BASEDIR=`mktemp -d isolate.XXXXXXXX --tmpdir`
+        # -d means 'remote empty dir only'
+        trap 'rm -d "$NI_BASEDIR"' EXIT KILL INT TERM
     fi
 
     # Do the unshare.  Re-run this same script in phase 2.
     export NI_PHASE=2
     unshare --map-root-user --mount-proc \
-	    --user --pid --uts --ipc $NI_NET_UNSHARE --mount \
-	     --fork bash "$0" "$@"
+            --user --pid --uts --ipc $NI_NET_UNSHARE --mount \
+             --fork bash "$0" "$@"
 
     # Clean up via the "trap" above.
 
