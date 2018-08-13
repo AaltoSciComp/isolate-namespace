@@ -48,7 +48,9 @@ execution.
 
 - `NI_BASEDIR=`.  The temporary directory used to assemble our
   isolated environment..  Defaults to `mktemp -d isolate.XXXXXXXX`,
-  which is an `isolate.* directory in the system-default tmpdir.
+  which is an `isolate.* directory in the system-default tmpdir.  If
+  you specify this yourself, you are responsible for cleaning it up
+  yourself.
 
 
 Use with Jupyter kernels
