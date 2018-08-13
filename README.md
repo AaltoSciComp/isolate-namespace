@@ -32,27 +32,19 @@ There are two primary invocation methods:
   the environment.
 
 
-Currently all configuration is done by environment variables - you
-can't configure things by the command line.  So, for example, to
-change `MNTDIRS` you could run `MNTDIRS='/home/pymod .' isolate.sh
-python code.py`.  The environment variables are:
+The configuration options are:
 
-- `MNTDIRS='.'`: A space-separated list of directories to mount within
+- `-m='.'` or `--mnt=`: A *space-separated* list of directories to mount within
   the container.  The default is `.` which is expanded to the current
   directory.  Relative directory names are allowed (expanded using
   `realpath`).  If prefixed with `ro:`, bind-mount it read-only.
 
-- `MNTDIRS_BASE="ro:/bin ro:/lib ro:/etc ro:/usr ro:/lib64 ro:/proc"`:
-  These are the *default* directories which are always mounted to make
-  a functional system.  It is assumed that these don't contain too
-  sensitive data - if that is not true, this should be changed.
-
-- `VERBOSE=1`: If set to any value (such as `1`), be more verbose in the
+- `-v`: Be more verbose in execution (uses `set -x`).
 execution.
 
-- `NI_BASEDIR=`.  The temporary directory used to assemble our
+- `-b=DIR`.  The temporary directory used to assemble our
   isolated environment..  Defaults to `mktemp -d isolate.XXXXXXXX`,
-  which is an `isolate.* directory in the system-default tmpdir.  If
+  which is an `isolate.*` directory in the system-default tmpdir.  If
   you specify this yourself, you are responsible for cleaning it up
   yourself.
 
@@ -83,20 +75,16 @@ are needed) are modified:
     "{connection_file}"
   ],
   "display_name": "Python 3 (os) isolated",
-  "language": "python",
-  "env": {
-    "MNTDIRS": ". ~/path/to/conda"
-  }
+  "language": "python"
 }
 ```
 
-You will need to adjust `MNTDIRS` to handle whatever you need to run
-your notebooks.  The directory containing `{connection_file}` would
-need to be shared - TODO: where is that?
+You will need to adjust the `--mnt` option to handle whatever you need to run
+your notebooks.
 
 Then, when you run `nbgrader autograde`, use the
 `--ExecutePreprocessor.kernel_name=python3-isolated` option and it
-will run using this kernel.  TODO: this needs checking!
+will run using this kernel.
 
 With nbgrader
 -------------
@@ -173,9 +161,6 @@ Problems
 
 - You shouldn't mount one directory inside of another.
 
-- Currently `/etc` is included in `MNTDIRS_BASE`.  Should this be
-  removed?
-
 - Probably only works with bash.
 
 - You appear to be root inside the isolated environment, but you are
@@ -185,7 +170,7 @@ Problems
 - This does not work within a container - as in, recursive containers
   don't work.  Yet?
 
-- `realpath` can't expand `~` inside the environment.
+- `realpath` can't expand `~` in phase 2.
 
 - Aalto workstations use `/u` is $HOME, but realpath expands it to
   `/m/home/...` and thus things like sharing `~/.local` fail subtly
