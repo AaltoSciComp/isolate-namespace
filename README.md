@@ -100,12 +100,10 @@ Problems
   from, and some container/namespace/chroot guru could check and
   improve things.
 
-- You shouldn't mount one directory.
+- You shouldn't mount one directory inside of another.
 
 - Currently `/etc` is included in `MNTDIRS_BASE`.  Should this be
   removed?
-
-- The read-only option has been untested.
 
 - Probably only works with bash.
 
