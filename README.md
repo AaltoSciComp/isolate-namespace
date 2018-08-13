@@ -75,7 +75,7 @@ are needed) are modified:
 ```
 {
   "argv": [
-    "isolate.sh"
+    "isolate.sh", "--mnt", "{connection_file} .", "--no-net", "--",
     "/usr/bin/python3",
     "-m",
     "ipykernel",
@@ -97,6 +97,71 @@ need to be shared - TODO: where is that?
 Then, when you run `nbgrader autograde`, use the
 `--ExecutePreprocessor.kernel_name=python3-isolated` option and it
 will run using this kernel.  TODO: this needs checking!
+
+With nbgrader
+-------------
+
+* Create a conda environment to match what you use in your course (it
+  would be better to directly use the existing container, but the
+  point of this script is to not have so much overhead).
+
+* Activate that conda environment.  Install jupyter, nbgrader, and
+  whatever else is needed.
+
+* Mount the course directory on your computer somehow.
+
+* `cd` to the root of the course directory.  (i.e. the directory under
+  which there are the `source`, `release`, `autograded`, etc. directories).
+
+* `umask 007` - make sure that files you make will be group
+  writeable.  (groupshared only)
+
+* `pip install --upgrade --no-deps
+  https://github.com/rkdarst/nbgrader/archive/live.zip` - we still
+  need to install custom nbgrader to make files group shared.
+  (groupshared only)
+
+* Create a nbgrader config file within the root of the course
+  directory (what you have mounted) with these lines (groupshared
+  only):
+
+      c = get_config()
+      c.BaseConverter.groupshared = True
+
+* Create a new Python kernel (run this with the interpreter you want
+  to use): `python -m ipykernel install
+  --sys-prefix --name=python3-isolated` (output shows: `Installed
+  kernelspec python3-isolated in
+  /.../conda/share/jupyter/kernels/python3-isolated`)
+
+* Edit `kernel.json` in that directory to set the things you need to
+  share.  See above.  Example for me:
+
+      {
+       "argv": [
+          "isolate.sh",
+           "--mnt", "/work/modules/ /l/darstr1/conda {connection_file} .",
+           "--no-net", "--",
+           "/l/darstr1/conda/bin/python",
+           "-m",
+           "ipykernel_launcher",
+           "-f",
+           "{connection_file}"
+         ],
+       "display_name": "python3-isolated",
+       "language": "python"
+      }
+
+  The `/work/modules` and `/l/darstr1/conda` directories are there
+  because those are the paths to my conda base and conda environment.
+
+
+* Run the autograding using
+`--ExecutePreprocessor.kernel_name=python3-isolated`: `nbgrader
+autograde $assignmentname [--student=$name]
+--ExecutePreprocessor.kernel_name=python3-isolated`
+
+
 
 
 Problems
