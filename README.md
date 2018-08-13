@@ -7,13 +7,17 @@ but automates the setup and by using namespaces, can be done by an
 unprivledged user.  The usage of the script can be as a wrapper, for
 example instead of `python code.py`, one can run `isolate.sh python
 code.py`.  You choose which directories to make available inside of
-the isolated environment.
+the isolated environment.  For example, you can run `MNTDIRS="."
+isolate.sh python` to run a Python process that only has access to `.`
+and system Python stuff - not the rest of your home directory.
 
 You may think "isn't this what containers do?" and you would be right.
 In fact, in the ideal case this would be a primitive reimplementation
-of containers.  However, this is standalone and requires no other
-system stuff installed.  There *should* be a script like this that
-already exists - if anyone can find it, please let me know.
+of containers.  However, this is standalone, requires no other system
+stuff installed, and is designed to isolate your existing system by
+only mounting requested directories, not a different image.  There
+*should* be a script like this that already exists - if anyone can
+find it, please let me know.
 
 This is alpha stage software.
 
