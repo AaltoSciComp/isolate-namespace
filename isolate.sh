@@ -16,6 +16,7 @@ debug echo original args: phase=$NI_PHASE "$@"
 export METHOD=${METHOD:-chroot}
 # Things which should almost always be mounted
 MNTDIRS_DEFAULT="ro:/bin ro:/usr ro:/lib ro:/lib64 /proc ro:/etc rbind:/dev"
+NI_TMPFS_SIZE_DEFAULT=32M
 
 
 # Phase 1: basic setup of the new namespace.
@@ -59,7 +60,7 @@ if [ -z "$NI_PHASE" ] ; then
     export NI_MNTDIRS_ALL="$MNTDIRS_DEFAULT $MNTDIRS"
     # Original uid/gid for changing back to user - not implemented yet.
     export NI_OLDID=${NI_OLDID:-`id -u`:`id -g`}
-
+    export NI_TMPFS_SIZE=${NI_TMPFS_SIZE:-$NI_TMPFS_SIZE_DEFAULT}
 
 
 
@@ -83,7 +84,7 @@ elif [ "$NI_PHASE" = 2 ] ; then
     echo "BEGIN phase 2"
     debug whoami
     # Mount a tmpfs to be our new root.
-    mount -t tmpfs -o size=10k tmpfs "$NI_BASEDIR"
+    mount -t tmpfs -o size=$NI_TMPFS_SIZE tmpfs "$NI_BASEDIR"
     # First pass... create all directories (if mounted read-only this
     # will be a problem later)
     for dir in $NI_MNTDIRS_ALL; do
