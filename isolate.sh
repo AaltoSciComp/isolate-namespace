@@ -129,12 +129,12 @@ elif [ "$NI_PHASE" = 2 ] ; then
 
     # If chroot method
     if [ $METHOD = "chroot" ] ; then
-	cd "$NI_BASEDIR"
-	chroot "." "/isolate.sh" "$@"
+        cd "$NI_BASEDIR"
+        chroot "." "/isolate.sh" "$@"
     # Using pivot_root.  One comment I saw said this was more secure,
     # but I haven't verified this working yet.
     else
-	true #... something fancy using pivot_root?
+        true #... something fancy using pivot_root?
     fi
 
 # Phase 3.  Do setup in the chroot, such as change to our former pwd
@@ -145,9 +145,9 @@ elif [  "$NI_PHASE" = 3 ] ; then
     debug mount
     echo `whoami` in `pwd`
     if [ "$#" -gt 0 ] ; then
-	echo "running command $@"
-	eval "$@"
+        echo "running command $@"
+        eval "$@"
     else
-	exec "$SHELL"  # TODO: bash script so will always be bash...
+        exec "$SHELL"  # TODO: bash script so will always be bash...
     fi
 fi
