@@ -4,7 +4,43 @@ VERBOSE=${VERBOSE:-}
 test -n "$VERBOSE" && set -x
 set -e
 
+
+NI_NET_UNSHARE="--net" # default
+
+while true ; do
+    case "$1" in
+	-m)
+	    MNTDIRS="$2"
+	    shift 2
+	    ;;
+	-v)
+	    export VERBOSE=1
+	    shift
+	    ;;
+	-b)
+	    export NI_BASEDIR="$2"
+	    shift 2
+	    ;;
+	--no-net)
+	    export NI_NET_UNSHARE=""
+	    shift 1
+	    ;;
+	--|*)
+	    break
+	    ;;
+    esac
+done
+
+
 export METHOD=${METHOD:-chroot}
+# Things which should almost always be mounted
+MNTDIRS_DEFAULT="ro:/bin ro:/lib ro:/etc ro:/usr ro:/lib64 /proc rbind:/dev"
+
+export MNTDIRS=${MNTDIRS:-.}
+export MNTDIRS_BASE=${MNTDIRS_BASE:-$MNTDIRS_DEFAULT}
+export NI_MNTDIRS_ALL="$MNTDIRS_BASE $MNTDIRS"
+
+
 
 # If VERBOSE is set, run the command
 debug () {
@@ -12,15 +48,11 @@ debug () {
     return 0
 }
 
-export NI_OLDID=${NI_OLDID:-`id -u`:0}
+export NI_OLDID=${NI_OLDID:-`id -u`:`id -g`}
 
 # Phase 1: basic setup of the new namespace.
 # Create the base directory.
 if [ -z "$NI_PHASE" ] ; then
-    MNTDIRS=${MNTDIRS:-.}
-    # Things which should almost always be mounted
-    MNTDIRS_BASE=${MNTDIRS_BASE:-"ro:/bin ro:/lib ro:/etc ro:/usr ro:/lib64 /proc"}
-    export MNTDIRS="$MNTDIRS_BASE $MNTDIRS"
     # Make our tmpdir
     if [ -z "$NI_BASEDIR" ] ; then
 	export NI_BASEDIR=`mktemp -d isolate.XXXXXXXX --tmpdir`
@@ -31,7 +63,7 @@ if [ -z "$NI_PHASE" ] ; then
     # Do the unshare.  Re-run this same script in phase 2.
     export NI_PHASE=2
     unshare --map-root-user --mount-proc \
-	    --user --pid --net --uts --ipc --mount \
+	    --user --pid --uts --ipc $NI_NET_UNSHARE --mount \
 	     --fork bash "$0" "$@"
 
     # Clean up via the "trap" above.
@@ -44,7 +76,7 @@ elif [ "$NI_PHASE" = 2 ] ; then
     mount -t tmpfs -o size=10k tmpfs "$NI_BASEDIR"
     # First pass... create all directories (if mounted read-only this
     # will be a problem later)
-    for dir in $MNTDIRS; do
+    for dir in $NI_MNTDIRS_ALL; do
 	# remove a "ro:" prefix.
 	dir="${dir#*:}"
 	dir=`realpath "$dir"`
@@ -56,7 +88,7 @@ elif [ "$NI_PHASE" = 2 ] ; then
     mkdir -p "$NI_BASEDIR/tmp/"
 
     # Mount each dir in the basedir
-    for dir in $MNTDIRS; do
+    for dir in $NI_MNTDIRS_ALL; do
 	# If "ro:" prefix, bind-mount read only
 	# This is probably a bashism
 	[[ "$dir" = *ro*:* ]] && readonly="--read-only" || readonly=""
@@ -90,8 +122,8 @@ elif [  "$NI_PHASE" = 3 ] ; then
     cd "$NI_OLDPWD"
     debug mount
     echo `whoami` in `pwd`
-    echo "running command $@"
     if [ "$#" -gt 0 ] ; then
+	echo "running command $@"
 	eval "$@"
     else
 	exec "$SHELL"  # TODO: bash script so will always be bash...
