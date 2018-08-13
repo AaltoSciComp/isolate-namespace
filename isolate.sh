@@ -15,7 +15,7 @@ debug echo original args: phase=$NI_PHASE "$@"
 
 export METHOD=${METHOD:-chroot}
 # Things which should almost always be mounted
-MNTDIRS_DEFAULT="ro:/bin ro:/usr ro:/lib ro:/lib64 /proc ro:/etc rbind:/dev"
+MNTDIRS_DEFAULT="ro:/bin ro:/usr ro:/lib ro:/lib64 /proc /dev/urandom"
 NI_TMPFS_SIZE_DEFAULT=32M
 
 
