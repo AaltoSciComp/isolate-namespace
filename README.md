@@ -119,3 +119,9 @@ Problems
 
 - This does not work within a container - as in, recursive containers
   don't work.  Yet?
+
+- `realpath` can't expand `~` inside the environment.
+
+- Aalto workstations use `/u` is $HOME, but realpath expands it to
+  `/m/home/...` and thus things like sharing `~/.local` fail subtly
+  with Python.
