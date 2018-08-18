@@ -104,8 +104,19 @@ elif [ "$NI_PHASE" = 2 ] ; then
         dir="${dir#*:}"
 	# is it mountpoint=dirname?  If so, split it into mntpoint and tomount.
         if [[ "$dir" = *=* ]] ; then
-            tomount="${dir%*=}"    # dir=tomount
+            tomount="${dir#*=}"    # dir=tomount
             dir="${dir%%=*}"
+	    # If tomount is "none", then remove this file.
+	    if [ "$tomount" = "none" ] ; then
+		if [ ! -d "$dir" ] ; then
+		    # If a file: mount /dev/null on it
+		    tomount="/dev/null"
+		else
+		    # If a directory: mount a tmpfs on it
+		    bindtype="-t tmpfs"
+		    tomount="tmpfs"
+		fi
+	    fi
         else
 	    tomount="$dir"
 	    mntpoint="$dir"
@@ -119,7 +130,7 @@ elif [ "$NI_PHASE" = 2 ] ; then
         # bind mounting files)
         if [ -e "$tomount" -a ! -d "$tomount" ] ; then
             mkdir -p "$NI_BASEDIR/`dirname "$dir"`"
-            touch "$NI_BASEDIR/$dir"
+            test -e "$NI_BASEDIR/$dir" || touch "$NI_BASEDIR/$dir"
         else
             # If it's a directory, make the dir.
             mkdir -p "$NI_BASEDIR/$dir"
