@@ -38,13 +38,30 @@ doesn't work):
 - `-m '.'` or `--mnt '.'`: A *space-separated* list of directories to
   mount within the container.  The default is `.` which is expanded to
   the current directory.  Relative directory names are allowed
-  (expanded using `realpath`).  If prefixed with `ro:`, bind-mount it
-  read-only.  The defaults (which are always included... you don't
-  need to also specify these) include `/bin`, `/usr`, `/lib`, `/proc`,
-  `/dev/urandom`.
+  (expanded using `realpath`).  The program-wide defaults (which are
+  hard-coded, separate from the `-m` option) include `/bin`,
+  `/usr`, `/lib`, `/proc`, `/dev/urandom`.
+
+  - If you use `-m`, you *probably* want to include "." in your list
+    of things to mount.
+
+  - You can use the syntax `MNTPOINT=SOURCE` to mount a a source
+    directory at a different mountpoint inside the isolated
+    environment.
+
+  - You can use the syntax `MNTPOINT=none` to remove an existing
+    file/directory from within the container.  If it's a directory, it
+    will become an empty tmpfs.  If it's a file, it will become
+    `/dev/null`.
+
+  - If prefixed with `ro:`, bind-mount it read-only.
+
+  - If prefixed with `rbind:`, use `--rbind` which allows you to
+    bind-mount things that have other things bind-mounted within them
+    (needed in some cases).  These prefixes can be combined with
+    commas: `ro,rbind:`.
 
 - `-v`: Be more verbose in execution (uses `set -x`).
-  execution.
 
 - `-b DIR`:  The temporary directory used to assemble our
   isolated environment..  Defaults to `mktemp -d isolate.XXXXXXXX`,
@@ -55,8 +72,10 @@ doesn't work):
 - `--no-net`: Don't unshare the network namespace.  This is needed so
   that Jupyter kernels can communicate via loopback.
 
-- `--`.  Separate options to `isolate.sh` from program to run.  All
-  options to `isolate.sh` must be before program to run.
+- `--`.  Separate options to `isolate.sh` from program to run.
+  Everything following this is an argument to the program to run.  Not
+  required, by default stop parsing at the first non-recognized
+  argument.
 
 
 Use with Jupyter kernels
@@ -102,7 +121,8 @@ nbgrader details
 * Create a conda environment to match what you use in your course (it
   would be better to directly use the existing container, but the
   point of this script is to not have the overhead of setting this
-  up).
+  up).  This is how you limit the available modules students can use
+  (though we can never stop someone sufficiently clever...).
 
 * Activate that conda environment.  Install jupyter, nbgrader, and
   whatever else is needed.
