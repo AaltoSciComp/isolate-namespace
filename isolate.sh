@@ -82,7 +82,7 @@ if [ -z "$NI_PHASE" ] ; then
     export NI_PHASE=2
     unshare --map-root-user --mount-proc \
             --user --pid --uts --ipc $NI_NET_UNSHARE --mount \
-             --fork bash "$0" "$@"
+            --fork bash "$0" "$@"
 
     # Clean up via the "trap" above.
 
@@ -94,8 +94,22 @@ elif [ "$NI_PHASE" = 2 ] ; then
     mount -t tmpfs -o size=$NI_TMPFS_SIZE tmpfs "$NI_BASEDIR"
     # Go through all directories and create the mount points.  First pass.
     for dir in $NI_MNTDIRS_ALL; do
+        # If "ro:" prefix, bind-mount read only
+	# If "rbind:" prefix, use --rbind which seems necessary when
+	#   the mount point has other mount points under it
+        # This syntax is probably a bashism
+        [[ "$dir" = *ro*:* ]] && readonly="--read-only" || readonly=""
+        [[ "$dir" = *rbind*:* ]] && bindtype="--rbind" || bindtype="--bind"
         # remove the "ro:" prefixes and so on.
         dir="${dir#*:}"
+	# is it mountpoint=dirname?  If so, split it into mntpoint and tomount.
+        if [[ "$dir" = *=* ]] ; then
+            tomount="${dir%*=}"    # dir=tomount
+            dir="${dir%%=*}"
+        else
+	    tomount="$dir"
+	    mntpoint="$dir"
+	fi
 	# If not absolute path (starting with /), then expand using
 	# realpath
         if [[ "$dir" != /* ]] ; then
@@ -103,37 +117,21 @@ elif [ "$NI_PHASE" = 2 ] ; then
         fi
         # If it's a file, prepare touch an empty file (required for
         # bind mounting files)
-        if [ -e "$dir" -a ! -d "$dir" ] ; then
-            mkdir -p "$NI_BASEDIR`dirname "$dir"`"
+        if [ -e "$tomount" -a ! -d "$tomount" ] ; then
+            mkdir -p "$NI_BASEDIR/`dirname "$dir"`"
             touch "$NI_BASEDIR/$dir"
-            continue
-        fi
-        # If it's a directory, make the dir.
-        mkdir -p "$NI_BASEDIR/$dir"
+        else
+            # If it's a directory, make the dir.
+            mkdir -p "$NI_BASEDIR/$dir"
+	fi
+	# Do mount
+        mount $bindtype $readonly "$tomount" "$NI_BASEDIR/$dir"
     done
     # Copy this isolate.sh script into the new base.
     #mount --bind "$0" "$NI_BASEDIR/isolate.sh"
     cp -p "$0" "$NI_BASEDIR/isolate.sh"
     # Make tmpdir inside the new root.
     mkdir -p "$NI_BASEDIR/tmp/"
-
-    # Second pass: Mount each dir in the basedir
-    for dir in $NI_MNTDIRS_ALL; do
-        # If "ro:" prefix, bind-mount read only
-	# If "rbind:" prefix, use --rbind which seems necessary when
-	#   the mount point has other mount points under it
-        # This syntax is probably a bashism
-        [[ "$dir" = *ro*:* ]] && readonly="--read-only" || readonly=""
-        [[ "$dir" = *rbind*:* ]] && bindtype="--rbind" || bindtype="--bind"
-        # remove the "ro,rbind:" prefixes
-        dir="${dir#*:}"
-        # Expand non-absolute paths just like in the first pass.
-        if [[ "$dir" != /* ]] ; then
-            dir=`realpath "$dir"`
-        fi
-	# Do mount
-        mount $bindtype $readonly "$dir" "$NI_BASEDIR/$dir"
-    done
 
     debug whoami
     debug ls -l "$NI_BASEDIR"
@@ -144,7 +142,7 @@ elif [ "$NI_PHASE" = 2 ] ; then
     # If chroot method
     if [ $METHOD = "chroot" ] ; then
         cd "$NI_BASEDIR"
-        chroot "." "/isolate.sh" "$@"
+        exec chroot "." "/isolate.sh" "$@"
     # Using pivot_root.  One comment I saw said this was more secure,
     # but I haven't verified this working yet.  I think it may not be
     # needed when using bind mounts like we have.
@@ -158,14 +156,14 @@ elif [  "$NI_PHASE" = 3 ] ; then
     debug echo "BEGIN phase 3"
     cd "$NI_OLDPWD"
     debug mount
-    echo `whoami` in `pwd`
+    test -n "$NI_QUIET" || echo `whoami 2>/dev/null` in `pwd`
     # Run particular command that was originally given on the command
     # line and passed down through each phase.
     if [ "$#" -gt 0 ] ; then
-        echo "running command $@"
+        test -n "$NI_QUIET" || echo "running command $@"
         eval "$@"
     # No command given, so start a shell
     else
-        exec "$SHELL"  # TODO: bash script so will always be bash...
+        "$SHELL"  # TODO: bash script so will always be bash...
     fi
 fi
