@@ -71,6 +71,11 @@ if [ -z "$NI_PHASE" ] ; then
     export NI_OLDID=${NI_OLDID:-`id -u`:`id -g`}
     export NI_TMPFS_SIZE=${NI_TMPFS_SIZE:-$NI_TMPFS_SIZE_DEFAULT}
 
+    # Do different tests
+    if [ "$(cat /proc/sys/kernel/unprivileged_userns_clone)" = 0 ] ; then
+	echo "Must enable user namespac clone: sudo su -c 'echo 1 > /proc/sys/kernel/unprivileged_userns_clone'"
+	exit 1
+    fi
     # Make our tmpdir
     if [ -z "$NI_BASEDIR" ] ; then
         export NI_BASEDIR=`mktemp -d isolate.XXXXXXXX --tmpdir`
