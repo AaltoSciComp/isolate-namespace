@@ -97,6 +97,9 @@ elif [ "$NI_PHASE" = 2 ] ; then
     debug whoami
     # Mount a tmpfs to be our new root.
     mount -t tmpfs -o size=$NI_TMPFS_SIZE tmpfs "$NI_BASEDIR"
+    # Set up new passwd
+    echo "$(getent passwd 0 $USER)" > "$NI_BASEDIR/passwd"
+    NI_MNTDIRS_ALL="$NI_MNTDIRS_ALL /etc/passwd=$NI_BASEDIR/passwd"
     # Go through all directories and create the mount points.  First pass.
     for dir in $NI_MNTDIRS_ALL; do
         # If "ro:" prefix, bind-mount read only
