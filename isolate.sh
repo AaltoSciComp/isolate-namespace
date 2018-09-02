@@ -104,7 +104,9 @@ elif [ "$NI_PHASE" = 2 ] ; then
 	#   the mount point has other mount points under it
         # This syntax is probably a bashism
         [[ "$dir" = *ro*:* ]] && readonly="--read-only" || readonly=""
-        [[ "$dir" = *rbind*:* ]] && bindtype="--rbind" || bindtype="--bind"
+        if   [[ "$dir" = *rbind*:* ]] ; then bindtype="--rbind"
+        elif [[ "$dir" = *move*:* ]] ; then bindtype="--move"
+        else  bindtype="--bind" ; fi
         # remove the "ro:" prefixes and so on.
         dir="${dir#*:}"
 	# is it mountpoint=dirname?  If so, split it into mntpoint and tomount.
