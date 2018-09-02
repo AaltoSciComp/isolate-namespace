@@ -160,7 +160,7 @@ elif [ "$NI_PHASE" = 2 ] ; then
     # If chroot method
     if [ $METHOD = "chroot" ] ; then
         cd "$NI_BASEDIR"
-        exec chroot "." "/isolate.sh" "$@"
+        exec /usr/sbin/chroot "." "/isolate.sh" "$@"
     # Using pivot_root.  One comment I saw said this was more secure,
     # but I haven't verified this working yet.  I think it may not be
     # needed when using bind mounts like we have.
